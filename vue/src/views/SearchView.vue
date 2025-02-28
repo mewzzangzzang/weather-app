@@ -1,7 +1,7 @@
 <script setup>
 import { useWeatherStore } from '@/stores/weather';
 import { storeToRefs } from 'pinia';
-import { ref } from 'vue';
+import { ref, watch, onBeforeMount } from 'vue';
 import { getImage } from '@/composables/helper';
 
 const weatherStore = useWeatherStore();
@@ -11,7 +11,24 @@ const searchWeather = async () => {
   await weatherStore.getSearchWeatherInfo(city.value);
   city.value = '';
 };
+// Watch 함수 감시자 /deep 없으니까 감지 못해서 저장x
+watch(
+  () => searchData,
+  (newValue) => {
+    localStorage.setItem('searchData', JSON.stringify(newValue.value));
+  },
+  { deep: true }
+);
+// json 변환 및 파싱/ 마운트시 searchData 기본값으로 할당, 없으면 빈배열
+onBeforeMount(() => {
+  const localData = JSON.parse(localStorage.getItem('searchData')) || [];
+  searchData.value = localData;
+});
 
+//기존 searchData 일치하는 데이터 제거 후 다시 할당, 삭제로 searchData 값에 변화가 생김 -> watch함수 실행 -> searchData 값을 다시 로컬에 저장
+const removeItem = (address) => {
+  searchData.value = searchData.value.filter((v) => v.address !== address);
+};
 </script>
 <template>
    <main class="weather-city">
@@ -41,7 +58,7 @@ const searchWeather = async () => {
             class="weather__cityImg"
           />
         </div>
-        <span class="material-symbols-outlined weather__cancel"> cancel </span>
+        <span class="material-symbols-outlined weather__cancel" @click="removeItem(data.address)"> cancel </span>
       </section>
       <!-- 검색 데이터가 없으면 -->
       <section v-if="searchData.length === 0" class="no-data">

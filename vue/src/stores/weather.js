@@ -3,15 +3,23 @@ import  axios  from "axios";
 import { ref, computed } from "vue";
 import  dayjs  from "dayjs";
 
-const axiosIstance = axios.create({
+
+const axiosInstance = axios.create({
     baseURL:'https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline',
     params: {
         lang:'ko',
-        key:'******',
+        key:'***',
         unitGroup:'metric',
     },
 });
-
+// 사용자 위치 정보 동의를 받아야함, api로 사용자 IP를 얻어서 사용자 위치 찾아서 연동, ip 들고오는 api url생성 
+const axiosIpInstance = axios.create({
+    baseURL: 'https://api64.ipify.org/?format=json',
+});
+// ip기반으로 지역명 구함함
+const axiosGeoInstance = axios.create({
+    baseURL: 'https://freeipapi.com/api/json',
+});
 
 export const useWeatherStore = defineStore('weather', () => {
     //초기 검색 지역
@@ -31,7 +39,7 @@ export const useWeatherStore = defineStore('weather', () => {
     //현재 날씨 API 불러오기
     const getCurrentWeatherInfo = async () => {
         try {
-            const res = await axiosIstance.get('/' + address.value);
+            const res = await axiosInstance.get('/' + address.value);
             currentConditions.value = res.data.currentConditions;
             days.value = res.data.days;//응답 객체에서 days 속성만 days 반응형 변수 할당
             console.log(days.value);
@@ -48,7 +56,7 @@ export const useWeatherStore = defineStore('weather', () => {
     //city 부분으로 날씨 검색
     const getSearchWeatherInfo = async (city) => {
         try {
-            const res = await axiosIstance.get('/' + city)
+            const res = await axiosInstance.get('/' + city)
             // 응답 데이터 객체로 필요한 데이터 가공
             const printData = {
                 address: res.data.address,
@@ -68,6 +76,18 @@ export const useWeatherStore = defineStore('weather', () => {
             alert(e.response?.data ? e.response?.data : e.message);
         }
     };
-    return { currentConditions, hours, forecast, searchData, getCurrentWeatherInfo, getSearchWeatherInfo };
+    // 사용자 지역명(axiosGeoIn)
+    const getCityName =async () => {
+        try {
+            const res = await axiosIpInstance.get();
+            const ip = res.data.ip;
+            // console.log(ip);
+            const geoRes = await axiosGeoInstance.get('/' + ip);
+            address.value = geoRes.data.cityName;
+        }catch (e) {
+            alert(e.response?.data ? e.response?.data : e.message);
+        }
+    };
+    return { address, currentConditions, hours, forecast, searchData, getCurrentWeatherInfo, getSearchWeatherInfo, getCityName };
 
 });
